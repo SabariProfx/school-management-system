@@ -1,8 +1,9 @@
 from flask import Flask, jsonify
+from flask_cors import CORS  # Import CORS
 
 app = Flask(__name__)
+CORS(app)  # Initialize CORS and allow requests from any origin
 
-# Our first API endpoint
 @app.route("/api/users")
 def get_users():
     # This is a Python dictionary
