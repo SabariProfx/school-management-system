@@ -3,10 +3,10 @@ function UserList({ title, users, onDelete }) {
     <div>
       <h2>{title}</h2>
       <ul>
-        {users.map((user, index) => (
-          <li key={index}>
-            <span>{user}</span>
-            <button onClick={() => onDelete(user)}>Delete</button>
+        {users.map((user) => (
+          <li key={user.id}>
+            <span>{user.name}</span>
+            <button onClick={() => onDelete(user.id)}>Delete</button>
           </li>
         ))}
       </ul>

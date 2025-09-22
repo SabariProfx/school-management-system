@@ -6,12 +6,14 @@ function App() {
   const [students, setStudents] = useState([]);
   const [newStudentName, setNewStudentName] = useState('');
 
-  useEffect(() => {
+  const fetchStudents = () => {
     fetch("http://127.0.0.1:5000/api/students")
       .then(response => response.json())
-      .then(data => {
-        setStudents(data);
-      });
+      .then(data => setStudents(data));
+  };
+
+  useEffect(() => {
+    fetchStudents();
   }, []);
 
   const handleSubmit = (event) => {
@@ -21,23 +23,20 @@ function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: newStudentName }),
     })
-    .then(response => response.json())
-    .then(data => {
-      setStudents(data.students);
+    .then(() => {
+      // After adding, re-fetch the list to see the new student
+      fetchStudents();
       setNewStudentName('');
     });
   };
 
-  const handleDelete = (studentToDelete) => {
-    // --- THIS IS THE FIX ---
-    const encodedStudentName = encodeURIComponent(studentToDelete);
-    fetch(`http://127.0.0.1:5000/api/students/${encodedStudentName}`, {
-    // --------------------
+  const handleDelete = (studentId) => {
+    fetch(`http://127.0.0.1:5000/api/students/${studentId}`, {
       method: 'DELETE',
     })
-    .then(response => response.json())
-    .then(data => {
-      setStudents(data.students);
+    .then(() => {
+      // After deleting, re-fetch the list
+      fetchStudents();
     });
   };
 
