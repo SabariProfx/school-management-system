@@ -4,9 +4,8 @@ import './App.css';
 
 function App() {
   const [students, setStudents] = useState([]);
-  const [newStudentName, setNewStudentName] = useState(''); // State for the input field
+  const [newStudentName, setNewStudentName] = useState('');
 
-  // This runs once to fetch the initial list of students
   useEffect(() => {
     fetch("http://127.0.0.1:5000/api/students")
       .then(response => response.json())
@@ -15,30 +14,36 @@ function App() {
       });
   }, []);
 
-  // This function runs when the form is submitted
   const handleSubmit = (event) => {
-    event.preventDefault(); // Prevents the browser from refreshing the page
-
+    event.preventDefault();
     fetch("http://127.0.0.1:5000/api/students", {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: newStudentName }),
     })
     .then(response => response.json())
     .then(data => {
-      // The backend sends back the updated list, so we update our state
       setStudents(data.students);
-      // Clear the input box for the next entry
       setNewStudentName('');
+    });
+  };
+
+  const handleDelete = (studentToDelete) => {
+    // --- THIS IS THE FIX ---
+    const encodedStudentName = encodeURIComponent(studentToDelete);
+    fetch(`http://127.0.0.1:5000/api/students/${encodedStudentName}`, {
+    // --------------------
+      method: 'DELETE',
+    })
+    .then(response => response.json())
+    .then(data => {
+      setStudents(data.students);
     });
   };
 
   return (
     <div id="app-container">
       <h1>School Management System</h1>
-
       <form onSubmit={handleSubmit} className="add-student-form">
         <input
           type="text"
@@ -48,8 +53,7 @@ function App() {
         />
         <button type="submit">Add Student</button>
       </form>
-
-      <UserList title="Students" users={students} />
+      <UserList title="Students" users={students} onDelete={handleDelete} />
     </div>
   )
 }
