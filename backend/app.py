@@ -2,13 +2,16 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
-from flask_jwt_extended import create_access_token, JWTManager, jwt_required
+from flask_jwt_extended import create_access_token, JWTManager, jwt_required, get_jwt
+from functools import wraps
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "http://localhost:5173"}})
+
+CORS(app, resources={r"/api/*": {"origins": "http://localhost:5173"}}, supports_credentials=True)
+
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JWT_SECRET_KEY'] = 'a-long-random-secret-string-nobody-can-guess'
@@ -47,26 +50,36 @@ class Student(db.Model):
     name = db.Column(db.String(100), nullable=False)
     def __init__(self, name): self.name = name
 
+# --- Custom Decorator for Role Checking ---
+def teacher_required():
+    def wrapper(fn):
+        @wraps(fn)
+        @jwt_required()
+        def decorator(*args, **kwargs):
+            claims = get_jwt()
+            if claims.get("role") != "teacher":
+                return jsonify(msg="Teachers only! Access forbidden."), 403
+            else:
+                return fn(*args, **kwargs)
+        return decorator
+    return wrapper
+
 # --- API ENDPOINTS ---
 @app.route("/api/register", methods=['POST'])
 def register_user():
     data = request.get_json()
-    institute_id = data.get('institute_id')
-    unique_id = data.get('unique_id')
-    dob = data.get('dob')
-    email = data.get('email')
     username = data.get('username')
     password = data.get('password')
-    if not all([institute_id, unique_id, dob, email, username, password]):
-        return jsonify({"error": "All fields are required"}), 400
-    pre_approved = PreApprovedUser.query.filter_by(institute_id=institute_id, unique_id=unique_id, dob=dob, email=email).first()
-    if not pre_approved:
-        return jsonify({"error": "Verification failed. The details provided do not match our records for the selected institute."}), 403
-    if User.query.filter_by(email=email).first():
-        return jsonify({"error": "An account for this email has already been registered."}), 409
+    email = data.get('email')
+    role = 'student'
+    if not all([username, password, email]):
+        return jsonify({"error": "Username, email, and password are required"}), 400
     if User.query.filter_by(username=username).first():
-        return jsonify({"error": "That username is already taken. Please choose another."}), 409
-    new_user = User(username=username, password=password, email=email, role=pre_approved.role, institute_id=institute_id)
+        return jsonify({"error": "Username already exists"}), 409
+    if User.query.filter_by(email=email).first():
+        return jsonify({"error": "Email already registered"}), 409
+    # This assumes institute_id=1 for now, we can make this dynamic later
+    new_user = User(username=username, password=password, email=email, role=role, institute_id=1)
     db.session.add(new_user)
     db.session.commit()
     return jsonify({"success": True, "message": "User created successfully."}), 201
@@ -106,6 +119,33 @@ def upload_preapproved_users():
             count += 1
     db.session.commit()
     return jsonify({"success": True, "message": f"{count} new users added to the pre-approved list for {institute_name}."})
+
+# --- PROTECTED API ENDPOINTS ---
+@app.route("/api/students", methods=['GET'])
+@teacher_required()
+def get_students():
+    students = Student.query.all()
+    result = [{"id": student.id, "name": student.name} for student in students]
+    return jsonify(result)
+
+@app.route("/api/students", methods=['POST'])
+@teacher_required()
+def add_student():
+    data = request.get_json()
+    new_student = Student(name=data['name'])
+    db.session.add(new_student)
+    db.session.commit()
+    return jsonify({"success": True, "message": "Student added successfully."})
+
+@app.route("/api/students/<int:student_id>", methods=['DELETE'])
+@teacher_required()
+def delete_student(student_id):
+    student = Student.query.get(student_id)
+    if student is None:
+        return jsonify({"success": False, "message": "Student not found."}), 404
+    db.session.delete(student)
+    db.session.commit()
+    return jsonify({"success": True, "message": "Student deleted successfully."})
 
 with app.app_context():
     db.create_all()
