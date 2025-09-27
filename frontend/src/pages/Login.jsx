@@ -1,27 +1,33 @@
 import { useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import { Button, TextField, Box, Typography, Link as MuiLink, CssBaseline, ThemeProvider } from '@mui/material';
+import { Button, TextField, Box, Typography, Link as MuiLink, CssBaseline, ThemeProvider, IconButton, InputAdornment } from '@mui/material';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { theme, gradientAnimation } from '../theme';
+import toast from 'react-hot-toast';
 
 function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    const loadingToast = toast.loading('Signing in...');
     const response = await fetch('http://127.0.0.1:5000/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     });
     const data = await response.json();
+    toast.dismiss(loadingToast);
 
     if (response.ok) {
+      toast.success('Login Successful!');
       localStorage.setItem('accessToken', data.access_token);
       navigate('/');
     } else {
-      alert(`Login failed: ${data.error}`);
+      toast.error(data.error || 'Login failed.');
     }
   };
 
@@ -39,29 +45,28 @@ function Login() {
             </Typography>
           </Box>
           <TextField fullWidth label="Username" margin="normal" value={username} onChange={(e) => setUsername(e.target.value)} />
-          <TextField fullWidth label="Password" type="password" margin="normal" value={password} onChange={(e) => setPassword(e.target.value)} />
-          <Button 
-            type="submit" 
+          <TextField 
             fullWidth 
-            variant="contained" 
-            size="large" 
-            sx={{ 
-              py: 1.5, 
-              mt: 3, 
-              mb: 2, 
-              fontWeight: 'bold',
-              background: 'linear-gradient(90deg, #BB86FC, #4A90E2)',
-              backgroundSize: '200% 200%',
-              animation: `${gradientAnimation} 5s ease infinite`,
-              border: 'none',
-              color: 'white',
-              // --- ADDED HOVER EFFECT ---
-              transition: 'box-shadow .3s ease-in-out',
-              '&:hover': {
-                boxShadow: '0 0 12px rgba(187, 134, 252, 0.6)',
-              }
+            label="Password" 
+            type={showPassword ? 'text' : 'password'}
+            margin="normal" 
+            value={password} 
+            onChange={(e) => setPassword(e.target.value)}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    onClick={() => setShowPassword(!showPassword)}
+                    onMouseDown={(e) => e.preventDefault()} // <-- THIS LINE FIXES THE CURSOR JUMP
+                    edge="end"
+                  >
+                    {showPassword ? <Visibility /> : <VisibilityOff />}
+                  </IconButton>
+                </InputAdornment>
+              )
             }}
-          >
+          />
+          <Button type="submit" fullWidth variant="contained" size="large" sx={{ py: 1.5, mt: 3, mb: 2, fontWeight: 'bold', background: 'linear-gradient(90deg, #BB86FC, #4A90E2)', backgroundSize: '200% 200%', animation: `${gradientAnimation} 5s ease infinite`, border: 'none', color: 'white', transition: 'box-shadow .3s ease-in-out', '&:hover': { boxShadow: '0 0 12px rgba(187, 134, 252, 0.6)' } }}>
             Sign In
           </Button>
           <Typography variant="body2" color="text.secondary" align="center">

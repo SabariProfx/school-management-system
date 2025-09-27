@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, TextField, Box, Typography, CssBaseline, ThemeProvider, Container, AppBar, Toolbar } from '@mui/material';
 import { theme } from './theme';
-import UserList from './components/UserList.jsx'; // Import from the new components folder
+import UserList from './components/UserList.jsx';
+import toast from 'react-hot-toast'; // Import toast
 
 function App() {
   const [students, setStudents] = useState([]);
@@ -15,11 +16,9 @@ function App() {
       navigate('/login');
       return;
     }
-
     const response = await fetch("http://127.0.0.1:5000/api/students", {
       headers: { 'Authorization': `Bearer ${token}` }
     });
-
     if (response.ok) {
       const data = await response.json();
       setStudents(data);
@@ -31,19 +30,17 @@ function App() {
 
   useEffect(() => {
     fetchStudents();
-  }, [navigate]);
+  }, []);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     const token = localStorage.getItem('accessToken');
     await fetch("http://127.0.0.1:5000/api/students", {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify({ name: newStudentName }),
     });
+    toast.success(`${newStudentName} added successfully!`);
     fetchStudents();
     setNewStudentName('');
   };
@@ -54,11 +51,13 @@ function App() {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
     });
+    toast.success('Student removed.');
     fetchStudents();
   };
 
   const handleLogout = () => {
     localStorage.removeItem('accessToken');
+    toast.success('Logged out successfully!'); // <-- ADDED
     navigate('/login');
   };
 
